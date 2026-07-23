@@ -1,0 +1,77 @@
+import { useEffect } from 'react';
+import { Stack } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useFonts, Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold } from '@expo-google-fonts/cairo';
+import * as SplashScreen from 'expo-splash-screen';
+import { I18nManager, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useAuthStore } from '../src/store/authStore';
+import { Colors } from '../src/constants/colors';
+
+// Force RTL for Arabic
+I18nManager.allowRTL(true);
+I18nManager.forceRTL(true);
+
+SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
+
+export default function RootLayout() {
+  const { hydrateFromStorage } = useAuthStore();
+  const [fontsLoaded, fontError] = useFonts({
+    Cairo_400Regular,
+    Cairo_600SemiBold,
+    Cairo_700Bold,
+  });
+
+  useEffect(() => {
+    hydrateFromStorage();
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
+
+  return (
+    <GestureHandlerRootView style={styles.container}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <StatusBar style="auto" />
+          <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(buyer)" />
+            <Stack.Screen name="(provider)" />
+            <Stack.Screen name="service/[id]" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="category/[id]" />
+            <Stack.Screen name="order/[id]" />
+            <Stack.Screen name="checkout" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="wishlist" />
+            <Stack.Screen name="notifications" />
+            <Stack.Screen name="wallet" />
+            <Stack.Screen name="loyalty" />
+            <Stack.Screen name="support" />
+          </Stack>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+});

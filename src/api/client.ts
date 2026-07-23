@@ -1,0 +1,133 @@
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://veraapp.app';
+
+// ─── Token Storage Keys ───────────────────────────────────────────────────────
+export const BUYER_TOKEN_KEY = 'vera_buyer_token';
+export const PROVIDER_TOKEN_KEY = 'vera_provider_token';
+
+// ─── Token Helpers ────────────────────────────────────────────────────────────
+export async function getBuyerToken(): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(BUYER_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function getProviderToken(): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(PROVIDER_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveBuyerToken(token: string): Promise<void> {
+  await SecureStore.setItemAsync(BUYER_TOKEN_KEY, token);
+}
+
+export async function saveProviderToken(token: string): Promise<void> {
+  await SecureStore.setItemAsync(PROVIDER_TOKEN_KEY, token);
+}
+
+export async function clearBuyerToken(): Promise<void> {
+  await SecureStore.deleteItemAsync(BUYER_TOKEN_KEY);
+}
+
+export async function clearProviderToken(): Promise<void> {
+  await SecureStore.deleteItemAsync(PROVIDER_TOKEN_KEY);
+}
+
+// ─── Axios Client Factory ─────────────────────────────────────────────────────
+function createClient(tokenGetter: () => Promise<string | null>): AxiosInstance {
+  const client = axios.create({
+    baseURL: BASE_URL,
+    timeout: 30000,
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Accept-Language': 'ar',
+    },
+  });
+
+  // Request interceptor: inject token
+  client.interceptors.request.use(async (config) => {
+    const token = await tokenGetter();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  // Response interceptor: handle errors
+  client.interceptors.response.use(
+    (response) => response,
+    (error: AxiosError) => {
+      if (error.response?.status === 401) {
+        // Token expired — will be handled by auth store
+        console.warn('[VÉRA API] Unauthorized — token may be expired');
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
+}
+
+// ─── Exported Clients ─────────────────────────────────────────────────────────
+export const buyerClient = createClient(getBuyerToken);
+export const providerClient = createClient(getProviderToken);
+
+// Public client — no auth token
+export const publicClient = axios.create({
+  baseURL: BASE_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Accept-Language': 'ar',
+  },
+});
+
+// ─── Generic request helpers ──────────────────────────────────────────────────
+export async function publicGet<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  const res = await publicClient.get<T>(url, { params });
+  return res.data;
+}
+
+export async function buyerGet<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  const res = await buyerClient.get<T>(url, { params });
+  return res.data;
+}
+
+export async function buyerPost<T>(url: string, data?: unknown): Promise<T> {
+  const res = await buyerClient.post<T>(url, data);
+  return res.data;
+}
+
+export async function buyerPut<T>(url: string, data?: unknown): Promise<T> {
+  const res = await buyerClient.put<T>(url, data);
+  return res.data;
+}
+
+export async function buyerDelete<T>(url: string): Promise<T> {
+  const res = await buyerClient.delete<T>(url);
+  return res.data;
+}
+
+export async function providerGet<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  const res = await providerClient.get<T>(url, { params });
+  return res.data;
+}
+
+export async function providerPost<T>(url: string, data?: unknown): Promise<T> {
+  const res = await providerClient.post<T>(url, data);
+  return res.data;
+}
+
+export async function providerPut<T>(url: string, data?: unknown): Promise<T> {
+  const res = await providerClient.put<T>(url, data);
+  return res.data;
+}
