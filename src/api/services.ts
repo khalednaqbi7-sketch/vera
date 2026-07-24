@@ -1,16 +1,28 @@
 import { publicGet, buyerGet, buyerPost, buyerDelete } from './client';
 import type { Service, Review } from '../types';
 
-// ─── Map raw service from public API ─────────────────────────────────────────
+const BASE = 'https://veraapp.app';
+
+function fullUrl(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  return path.startsWith('http') ? path : `${BASE}${path}`;
+}
+
+// ─── Map raw service from public API (list) ───────────────────────────────────
 function mapService(raw: any): Service {
+  const imageUrl = fullUrl(raw.image_url);
+  const gallery: string[] = Array.isArray(raw.gallery) && raw.gallery.length
+    ? raw.gallery.map((g: string) => fullUrl(g) ?? g)
+    : imageUrl ? [imageUrl] : [];
+
   return {
     id: String(raw.id),
     title: raw.title ?? '',
     description: raw.description,
     price: Number(raw.price ?? 0),
     currency: raw.currency ?? 'AED',
-    images: raw.gallery ?? (raw.image_url ? [raw.image_url] : []),
-    image: raw.image_url ? `https://veraapp.app${raw.image_url}` : raw.image,
+    images: gallery,
+    image: imageUrl,
     rating: Number(raw.rating ?? 0),
     reviewsCount: raw.review_count ?? raw.reviewCount ?? 0,
     isAvailable: raw.is_active ?? true,
@@ -21,37 +33,43 @@ function mapService(raw: any): Service {
       ? {
           id: String(raw.provider_id ?? ''),
           name: raw.provider_name,
-          avatar: raw.provider_avatar ? `https://veraapp.app${raw.provider_avatar}` : undefined,
+          avatar: fullUrl(raw.provider_avatar),
           isVerified: raw.provider_verified ?? false,
           city: raw.provider_city,
         }
       : undefined,
     viewsCount: raw.view_count,
     ordersCount: raw.order_count,
-    badge: raw.badge,
+    badge: raw.badge ?? undefined,
   } as Service;
 }
 
+// ─── Map raw service from detail API ─────────────────────────────────────────
 function mapDetailService(raw: any): Service {
+  const imageUrl = fullUrl(raw.image);
+  const gallery: string[] = Array.isArray(raw.gallery) && raw.gallery.length
+    ? raw.gallery.map((g: string) => fullUrl(g) ?? g)
+    : imageUrl ? [imageUrl] : [];
+
   return {
     id: String(raw.id),
     title: raw.title ?? '',
-    description: raw.description,
+    description: raw.description ?? raw.longDescription,
     price: Number(raw.price ?? 0),
     currency: raw.currency ?? 'AED',
-    images: raw.gallery ?? [],
-    image: raw.image,
+    images: gallery,
+    image: imageUrl,
     rating: Number(raw.rating ?? 0),
     reviewsCount: raw.reviewCount ?? 0,
-    isAvailable: true,
+    isAvailable: raw.status === 'approved' ? true : (raw.is_active ?? true),
     isFeatured: raw.isFeatured ?? false,
     deliveryTime: raw.deliveryTime,
-    location: raw.location,
+    location: raw.providerCity ?? raw.location,
     provider: raw.providerName
       ? {
           id: String(raw.providerId ?? ''),
           name: raw.providerName ?? '',
-          avatar: raw.providerAvatar,
+          avatar: fullUrl(raw.providerAvatar),
           rating: Number(raw.providerRating ?? 0),
           reviewsCount: raw.providerReviewCount ?? 0,
           isVerified: raw.providerVerified ?? false,
@@ -60,6 +78,7 @@ function mapDetailService(raw: any): Service {
         }
       : undefined,
     tags: raw.tags ?? [],
+    badge: raw.badge ?? undefined,
   } as Service;
 }
 
@@ -96,12 +115,16 @@ export async function getServiceReviews(
   page = 1,
   limit = 10
 ): Promise<{ reviews: Review[]; total: number; averageRating: number }> {
-  const data = await publicGet<any>(`/api/reviews/${serviceId}`, { page, limit });
-  return {
-    reviews: data?.reviews ?? data ?? [],
-    total: data?.total ?? 0,
-    averageRating: data?.averageRating ?? 0,
-  };
+  try {
+    const data = await publicGet<any>(`/api/reviews/${serviceId}`, { page, limit });
+    return {
+      reviews: data?.reviews ?? data ?? [],
+      total: data?.total ?? 0,
+      averageRating: data?.averageRating ?? 0,
+    };
+  } catch {
+    return { reviews: [], total: 0, averageRating: 0 };
+  }
 }
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────

@@ -1,13 +1,20 @@
 import { publicGet } from './client';
 import type { Category, Service } from '../types';
 
+const BASE = 'https://veraapp.app';
+
+function fullUrl(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  return path.startsWith('http') ? path : `${BASE}${path}`;
+}
+
 function mapCategory(raw: any): Category {
   return {
     id: String(raw.id),
-    name: raw.label ?? raw.name ?? raw.label_ar ?? '',
+    name: raw.label_ar ?? raw.label ?? raw.name ?? '',
     nameAr: raw.label_ar ?? raw.nameAr,
     icon: raw.icon,
-    image: raw.logo_url ? `https://veraapp.app${raw.logo_url}` : raw.image,
+    image: fullUrl(raw.logo_url) ?? raw.image,
     color: raw.color_class ?? raw.color,
     servicesCount: raw.count ?? raw.servicesCount,
     slug: raw.slug ?? String(raw.id),
@@ -15,14 +22,19 @@ function mapCategory(raw: any): Category {
 }
 
 function mapService(raw: any): Service {
+  const imageUrl = fullUrl(raw.image_url);
+  const gallery: string[] = Array.isArray(raw.gallery) && raw.gallery.length
+    ? raw.gallery.map((g: string) => fullUrl(g) ?? g)
+    : imageUrl ? [imageUrl] : [];
+
   return {
     id: String(raw.id),
     title: raw.title ?? '',
     description: raw.description,
     price: Number(raw.price ?? 0),
     currency: raw.currency ?? 'AED',
-    images: raw.gallery ?? (raw.image_url ? [`https://veraapp.app${raw.image_url}`] : []),
-    image: raw.image_url ? `https://veraapp.app${raw.image_url}` : raw.image,
+    images: gallery,
+    image: imageUrl,
     rating: Number(raw.rating ?? 0),
     reviewsCount: raw.review_count ?? raw.reviewCount ?? 0,
     isAvailable: raw.is_active ?? true,
@@ -31,11 +43,11 @@ function mapService(raw: any): Service {
       ? {
           id: String(raw.provider_id ?? ''),
           name: raw.provider_name,
-          avatar: raw.provider_avatar ? `https://veraapp.app${raw.provider_avatar}` : undefined,
+          avatar: fullUrl(raw.provider_avatar),
           isVerified: raw.provider_verified ?? false,
         }
       : undefined,
-    badge: raw.badge,
+    badge: raw.badge ?? undefined,
   } as Service;
 }
 
