@@ -22,10 +22,10 @@ export async function clearCart(): Promise<{ message: string }> {
 }
 
 export async function applyPromoCode(code: string): Promise<PromoCodeResponse> {
-  // Correct backend endpoint is /api/cart/promo (not /api/buyer/cart/promo)
   return buyerPost<PromoCodeResponse>('/api/cart/promo', { code });
 }
 
 export async function removePromoCode(): Promise<{ message: string }> {
-  return buyerDelete('/api/buyer/cart/promo');
+  // Backend promo endpoint: DELETE /api/cart/promo
+  return buyerDelete('/api/cart/promo');
 }

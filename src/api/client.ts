@@ -27,6 +27,13 @@ export async function clearProviderToken(): Promise<void> {
   await SecureStore.deleteItemAsync(PROVIDER_TOKEN_KEY);
 }
 
+// ─── Unauthorized Handler ─────────────────────────────────────────────────────
+// Called when a 401 is received — set via setUnauthorizedHandler in _layout.tsx
+let _onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: () => void) {
+  _onUnauthorized = handler;
+}
+
 // ─── Shared base config ───────────────────────────────────────────────────────
 const baseConfig = {
   baseURL: BASE_URL,
@@ -36,7 +43,7 @@ const baseConfig = {
     Accept: 'application/json',
     'Accept-Language': 'ar',
   },
-  // Allow axios to handle cookies from the native HTTP layer
+  // Sends native cookie jar automatically on iOS & Android
   withCredentials: true,
 };
 
@@ -44,21 +51,27 @@ const baseConfig = {
 function createClient(tokenGetter: () => Promise<string | null>): AxiosInstance {
   const client = axios.create(baseConfig);
 
-  // Request interceptor: inject token only if present (cookie handles auth otherwise)
+  // Request interceptor: inject Bearer token only when it's a real JWT.
+  // The backend is cookie-based; withCredentials handles auth automatically.
+  // If the stored value is a sentinel like 'via-cookie', skip the header.
   client.interceptors.request.use(async (config) => {
     const token = await tokenGetter();
-    if (token) {
+    if (token && token.startsWith('eyJ')) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   });
 
-  // Response interceptor: surface error messages
+  // Response interceptor: on 401, clear session and redirect to login
   client.interceptors.response.use(
     (response) => response,
-    (error: AxiosError) => {
+    async (error: AxiosError) => {
       if (error.response?.status === 401) {
-        console.warn('[VÉRA API] Unauthorized — token may be expired');
+        // Clear stored tokens so hydrateFromStorage sees a logged-out state
+        await clearBuyerToken().catch(() => {});
+        await clearProviderToken().catch(() => {});
+        // Notify root layout to redirect to login
+        _onUnauthorized?.();
       }
       return Promise.reject(error);
     }
@@ -105,5 +118,9 @@ export async function providerPost<T>(url: string, data?: unknown): Promise<T> {
 }
 export async function providerPut<T>(url: string, data?: unknown): Promise<T> {
   const res = await providerClient.put<T>(url, data);
+  return res.data;
+}
+export async function providerDelete<T>(url: string): Promise<T> {
+  const res = await providerClient.delete<T>(url);
   return res.data;
 }
