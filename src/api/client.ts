@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://veraapp.app';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://veraapp.app';
 
 // ─── Token Storage Keys ───────────────────────────────────────────────────────
 export const BUYER_TOKEN_KEY = 'vera_buyer_token';
@@ -28,7 +28,6 @@ export async function clearProviderToken(): Promise<void> {
 }
 
 // ─── Unauthorized Handler ─────────────────────────────────────────────────────
-// Called when a 401 is received — set via setUnauthorizedHandler in _layout.tsx
 let _onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(handler: () => void) {
   _onUnauthorized = handler;
@@ -43,7 +42,6 @@ const baseConfig = {
     Accept: 'application/json',
     'Accept-Language': 'ar',
   },
-  // Sends native cookie jar automatically on iOS & Android
   withCredentials: true,
 };
 
@@ -51,9 +49,6 @@ const baseConfig = {
 function createClient(tokenGetter: () => Promise<string | null>): AxiosInstance {
   const client = axios.create(baseConfig);
 
-  // Request interceptor: inject Bearer token only when it's a real JWT.
-  // The backend is cookie-based; withCredentials handles auth automatically.
-  // If the stored value is a sentinel like 'via-cookie', skip the header.
   client.interceptors.request.use(async (config) => {
     const token = await tokenGetter();
     if (token && token.startsWith('eyJ')) {
@@ -62,15 +57,12 @@ function createClient(tokenGetter: () => Promise<string | null>): AxiosInstance 
     return config;
   });
 
-  // Response interceptor: on 401, clear session and redirect to login
   client.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
       if (error.response?.status === 401) {
-        // Clear stored tokens so hydrateFromStorage sees a logged-out state
         await clearBuyerToken().catch(() => {});
         await clearProviderToken().catch(() => {});
-        // Notify root layout to redirect to login
         _onUnauthorized?.();
       }
       return Promise.reject(error);
@@ -83,8 +75,6 @@ function createClient(tokenGetter: () => Promise<string | null>): AxiosInstance 
 // ─── Exported Clients ─────────────────────────────────────────────────────────
 export const buyerClient = createClient(getBuyerToken);
 export const providerClient = createClient(getProviderToken);
-
-// Public client — no auth token
 export const publicClient = axios.create(baseConfig);
 
 // ─── Generic request helpers ──────────────────────────────────────────────────
