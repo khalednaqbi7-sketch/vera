@@ -3,10 +3,12 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMutation } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../src/constants/colors';
 import { Header } from '../src/components/common/Header';
 import { Button } from '../src/components/common/Button';
+import { buyerPost } from '../src/api/client';
 
 const FAQS = [
   { q: 'كيف أتتبع طلبي؟', a: 'يمكنك تتبع طلبك من قسم "طلباتي" في قائمة حسابك. ستحصل أيضاً على إشعارات فورية عند تغيير حالة الطلب.' },
@@ -20,20 +22,24 @@ export default function SupportScreen() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
-  const [sending, setSending] = useState(false);
+  const sendMutation = useMutation({
+    mutationFn: () => buyerPost('/api/buyer/support', { subject, message }),
+    onSuccess: () => {
+      setMessage('');
+      setSubject('');
+      Alert.alert('تم الإرسال', 'تم إرسال رسالتك بنجاح. سيتواصل معك فريق الدعم خلال 24 ساعة.');
+    },
+    onError: () => {
+      Alert.alert('تعذر الإرسال', 'حدثت مشكلة أثناء إرسال الرسالة. حاول مرة أخرى.');
+    },
+  });
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!message.trim() || !subject.trim()) {
       Alert.alert('تنبيه', 'يرجى ملء جميع الحقول');
       return;
     }
-    setSending(true);
-    // Simulate send
-    await new Promise((r) => setTimeout(r, 1500));
-    setSending(false);
-    setMessage('');
-    setSubject('');
-    Alert.alert('تم الإرسال ✅', 'تم إرسال رسالتك بنجاح. سيتواصل معك فريق الدعم خلال 24 ساعة.');
+    sendMutation.mutate();
   };
 
   return (
@@ -47,15 +53,6 @@ export default function SupportScreen() {
           <View style={styles.contactGrid}>
             <TouchableOpacity
               style={styles.contactItem}
-              onPress={() => Linking.openURL('https://wa.me/966500000000')}
-            >
-              <View style={[styles.contactIcon, { backgroundColor: '#25D366' + '20' }]}>
-                <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
-              </View>
-              <Text style={styles.contactLabel}>واتساب</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.contactItem}
               onPress={() => Linking.openURL('mailto:support@veraapp.app')}
             >
               <View style={[styles.contactIcon, { backgroundColor: Colors.primary + '20' }]}>
@@ -65,12 +62,12 @@ export default function SupportScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.contactItem}
-              onPress={() => Linking.openURL('tel:+966500000000')}
+              onPress={() => Linking.openURL('https://veraapp.app')}
             >
               <View style={[styles.contactIcon, { backgroundColor: Colors.info + '20' }]}>
-                <Ionicons name="call-outline" size={24} color={Colors.info} />
+                <Ionicons name="globe-outline" size={24} color={Colors.info} />
               </View>
-              <Text style={styles.contactLabel}>اتصال مباشر</Text>
+              <Text style={styles.contactLabel}>الموقع الرسمي</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -99,7 +96,7 @@ export default function SupportScreen() {
             textAlign="right"
             textAlignVertical="top"
           />
-          <Button title="إرسال الرسالة" onPress={handleSend} loading={sending} fullWidth />
+          <Button title="إرسال الرسالة" onPress={handleSend} loading={sendMutation.isPending} fullWidth />
         </View>
 
         {/* FAQs */}

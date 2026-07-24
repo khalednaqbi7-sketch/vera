@@ -58,7 +58,6 @@ export async function getProviderOrders(params?: {
   };
 }
 
-// FIX: was sending to /api/provider/orders without orderId in path
 export async function updateOrderStatus(orderId: string, status: string): Promise<{ message: string }> {
   const res = await providerClient.patch<{ message: string }>(
     `/api/provider/orders/${orderId}/status`,

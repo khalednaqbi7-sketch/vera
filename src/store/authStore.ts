@@ -150,9 +150,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       let providerToken = rawProviderToken;
       let providerUser: ProviderUser | null = providerUserStr ? JSON.parse(providerUserStr) : null;
 
-      // ── FIX: Verify cookie-based sessions on cold start ──────────────────────
-      // Cookie jar does NOT persist across app restarts on Android.
-      // Ping the /me endpoint; if 401, treat user as logged out.
+      // Verify cookie-based sessions on cold start because native cookie
+      // persistence is not consistent across Android app restarts.
       const [buyerCheck, providerCheck] = await Promise.all([
         buyerToken ? verifyBuyerSession(buyerToken) : Promise.resolve({ valid: false }),
         providerToken ? verifyProviderSession(providerToken) : Promise.resolve({ valid: false }),

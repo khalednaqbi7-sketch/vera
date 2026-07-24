@@ -98,11 +98,6 @@ export default function BuyerLayout() {
           ),
         }}
       />
-      {/* Hidden screens — accessible via router.push, not shown in tab bar */}
-      <Tabs.Screen name="wishlist" options={{ href: null }} />
-      <Tabs.Screen name="wallet" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="support" options={{ href: null }} />
     </Tabs>
   );
 }

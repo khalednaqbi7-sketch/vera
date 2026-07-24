@@ -37,7 +37,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     onWishlistPress?.();
   };
 
-  const imageUri = service.image || service.images?.[0] || 'https://veraapp.app/assets/images/placeholder.jpg';
+  const imageUri = service.image || service.images?.[0];
   const discountPct = service.originalPrice
     ? Math.round(((service.originalPrice - service.price) / service.originalPrice) * 100)
     : 0;
@@ -49,7 +49,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         onPress={onPress}
         style={[styles.listCard, style]}
       >
-        <Image source={{ uri: imageUri }} style={styles.listImage} />
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.listImage} />
+        ) : (
+          <View style={[styles.listImage, styles.imageFallback]}>
+            <Ionicons name="image-outline" size={24} color={Colors.textLight} />
+          </View>
+        )}
         <View style={styles.listContent}>
           <Text style={styles.listTitle} numberOfLines={2}>{service.title}</Text>
           {service.provider && (
@@ -89,7 +95,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         onPress={onPress}
         style={[styles.featuredCard, style]}
       >
-        <Image source={{ uri: imageUri }} style={styles.featuredImage} />
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.featuredImage} />
+        ) : (
+          <View style={[styles.featuredImage, styles.imageFallback]}>
+            <Ionicons name="image-outline" size={32} color={Colors.textLight} />
+          </View>
+        )}
         <View style={styles.featuredOverlay} />
         {discountPct > 0 && (
           <View style={styles.discountBadge}>
@@ -127,7 +139,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       style={[styles.gridCard, { width: CARD_WIDTH }, style]}
     >
       <View style={styles.imageContainer}>
-        <Image source={{ uri: imageUri }} style={styles.gridImage} />
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.gridImage} />
+        ) : (
+          <View style={[styles.gridImage, styles.imageFallback]}>
+            <Ionicons name="image-outline" size={28} color={Colors.textLight} />
+          </View>
+        )}
         {discountPct > 0 && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>-{discountPct}%</Text>
@@ -178,6 +196,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: { position: 'relative' },
   gridImage: { width: '100%', height: 130, backgroundColor: Colors.lightPurple },
+  imageFallback: { alignItems: 'center', justifyContent: 'center' },
   gridWishlist: {
     position: 'absolute',
     top: 8,

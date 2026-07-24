@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,7 +28,6 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   const { hydrateFromStorage, logoutAll } = useAuthStore();
   const router = useRouter();
-  const isNavigationReady = useRef(false);
 
   const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
@@ -36,16 +35,12 @@ export default function RootLayout() {
     Cairo_700Bold,
   });
 
-  // Register the 401 unauthorized handler once the router is mounted.
-  // When any API call returns 401, clear the session and redirect to login.
   useEffect(() => {
-    isNavigationReady.current = true;
     setUnauthorizedHandler(() => {
       logoutAll().then(() => {
         try {
           router.replace('/(auth)/login');
         } catch {
-          // Router may not be mounted yet; index.tsx will redirect on next render
         }
       });
     });
