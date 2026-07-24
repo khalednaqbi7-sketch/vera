@@ -2,7 +2,8 @@ import { buyerGet, buyerPost } from './client';
 import type { LoyaltyInfo } from '../types';
 
 export async function getLoyaltyInfo(): Promise<LoyaltyInfo> {
-  return buyerGet<LoyaltyInfo>('/api/buyer/loyalty');
+  const data = await buyerGet<any>('/api/loyalty');
+  return data?.loyalty ?? data ?? {};
 }
 
 export async function redeemLoyaltyPoints(points: number): Promise<{
@@ -10,12 +11,16 @@ export async function redeemLoyaltyPoints(points: number): Promise<{
   discount: number;
   remainingPoints: number;
 }> {
-  return buyerPost('/api/buyer/loyalty/redeem', { points });
+  return buyerPost('/api/loyalty/redeem', { points });
 }
 
 export async function getLoyaltyHistory(params?: {
   page?: number;
   limit?: number;
 }): Promise<{ history: LoyaltyInfo['history']; total: number }> {
-  return buyerGet('/api/buyer/loyalty/history', params as Record<string, unknown>);
+  const data = await buyerGet<any>('/api/loyalty', params as Record<string, unknown>);
+  return {
+    history: data?.history ?? [],
+    total: data?.total ?? 0,
+  };
 }

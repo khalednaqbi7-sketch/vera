@@ -34,7 +34,7 @@ export default function LoginScreen() {
     if (!email.trim()) e.email = 'البريد الإلكتروني مطلوب';
     else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'بريد إلكتروني غير صحيح';
     if (!password) e.password = 'كلمة المرور مطلوبة';
-    else if (password.length < 6) e.password = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    else if (password.length < 8) e.password = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
     setErrors(e);
     return Object.keys(e).length === 0;
   };

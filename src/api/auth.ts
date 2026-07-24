@@ -4,19 +4,30 @@ import type {
   RegisterBuyerRequest,
   RegisterProviderRequest,
   AuthResponse,
-  BuyerUser,
-  ProviderUser,
 } from '../types';
+
+// ─── Helper: extract JWT value from Set-Cookie header ─────────────────────────
+function extractCookieToken(headers: Record<string, any>, cookieName: string): string | null {
+  const raw = headers?.['set-cookie'] ?? headers?.['Set-Cookie'];
+  if (!raw) return null;
+  const joined = Array.isArray(raw) ? raw.join('; ') : String(raw);
+  const match = joined.match(new RegExp(cookieName + '=([^;,\\s]+)'));
+  return match ? match[1] : null;
+}
 
 // ─── Buyer Auth ───────────────────────────────────────────────────────────────
 export async function buyerLogin(data: LoginRequest): Promise<AuthResponse> {
-  const res = await publicClient.post<AuthResponse>('/api/buyer-auth/login', data);
-  return res.data;
+  const res = await publicClient.post('/api/buyer-auth/login', data);
+  const token = extractCookieToken(res.headers, 'buyer_token') ?? '';
+  const user = res.data?.buyer ?? res.data?.user ?? res.data;
+  return { token, user };
 }
 
 export async function buyerRegister(data: RegisterBuyerRequest): Promise<AuthResponse> {
-  const res = await publicClient.post<AuthResponse>('/api/buyer-auth/register', data);
-  return res.data;
+  const res = await publicClient.post('/api/buyer-auth/register', data);
+  const token = extractCookieToken(res.headers, 'buyer_token') ?? '';
+  const user = res.data?.buyer ?? res.data?.user ?? res.data;
+  return { token, user };
 }
 
 export async function buyerForgotPassword(email: string): Promise<{ message: string }> {
@@ -31,13 +42,17 @@ export async function buyerResetPassword(token: string, password: string): Promi
 
 // ─── Provider Auth ────────────────────────────────────────────────────────────
 export async function providerLogin(data: LoginRequest): Promise<AuthResponse> {
-  const res = await publicClient.post<AuthResponse>('/api/provider-auth/login', data);
-  return res.data;
+  const res = await publicClient.post('/api/provider-auth/login', data);
+  const token = extractCookieToken(res.headers, 'provider_token') ?? '';
+  const user = res.data?.provider ?? res.data?.user ?? res.data;
+  return { token, user };
 }
 
 export async function providerRegister(data: RegisterProviderRequest): Promise<AuthResponse> {
-  const res = await publicClient.post<AuthResponse>('/api/provider-auth/register', data);
-  return res.data;
+  const res = await publicClient.post('/api/provider-auth/register', data);
+  const token = extractCookieToken(res.headers, 'provider_token') ?? '';
+  const user = res.data?.provider ?? res.data?.user ?? res.data;
+  return { token, user };
 }
 
 export async function providerForgotPassword(email: string): Promise<{ message: string }> {

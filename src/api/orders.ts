@@ -6,11 +6,18 @@ export async function getOrders(params?: {
   limit?: number;
   status?: string;
 }): Promise<{ orders: Order[]; total: number; page: number; totalPages: number }> {
-  return buyerGet('/api/buyer/orders', params as Record<string, unknown>);
+  const data = await buyerGet<any>('/api/buyer/orders', params as Record<string, unknown>);
+  return {
+    orders: data?.orders ?? data ?? [],
+    total: data?.total ?? 0,
+    page: data?.page ?? 1,
+    totalPages: data?.totalPages ?? 1,
+  };
 }
 
 export async function getOrderById(id: string): Promise<Order> {
-  return buyerGet<Order>(`/api/buyer/orders/${id}`);
+  const data = await buyerGet<any>(`/api/buyer/orders/${id}`);
+  return data?.order ?? data;
 }
 
 export async function createOrder(data: {
@@ -21,7 +28,8 @@ export async function createOrder(data: {
   address?: string;
   notes?: string;
 }): Promise<Order> {
-  return buyerPost<Order>('/api/buyer/orders', data);
+  const res = await buyerPost<any>('/api/buyer/orders', data);
+  return res?.order ?? res;
 }
 
 export async function cancelOrder(orderId: string, reason?: string): Promise<{ message: string }> {
@@ -36,10 +44,29 @@ export async function rateOrder(orderId: string, data: {
 }
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
+// Routes to the correct gateway endpoint based on payment method
 export async function initPayment(data: PaymentInitRequest): Promise<PaymentInitResponse> {
-  return buyerPost<PaymentInitResponse>('/api/payments/init', data);
+  const methodMap: Record<string, string> = {
+    stripe: '/api/payments/stripe',
+    tabby: '/api/payments/tabby',
+    tamara: '/api/payments/tamara',
+  };
+  const endpoint = methodMap[data.method] ?? '/api/payments/stripe';
+
+  const payload: Record<string, unknown> = {
+    orderId: data.orderId,
+    returnUrl: data.returnUrl ?? 'vera://payment/return',
+    cancelUrl: data.cancelUrl ?? 'vera://payment/cancel',
+  };
+
+  const res = await buyerPost<any>(endpoint, payload);
+  return {
+    paymentUrl: res?.url ?? res?.checkoutUrl ?? res?.paymentUrl,
+    paymentId: res?.sessionId ?? res?.paymentId ?? res?.id,
+    clientSecret: res?.clientSecret,
+  };
 }
 
 export async function verifyPayment(paymentId: string): Promise<{ status: string; orderId?: string }> {
-  return buyerPost(`/api/payments/verify`, { paymentId });
+  return buyerPost('/api/buyer/wallet/verify', { sessionId: paymentId });
 }

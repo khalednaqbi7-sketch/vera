@@ -2,7 +2,8 @@ import { buyerGet, buyerPost } from './client';
 import type { Wallet, WalletTransaction } from '../types';
 
 export async function getWallet(): Promise<Wallet> {
-  return buyerGet<Wallet>('/api/buyer/wallet');
+  const data = await buyerGet<any>('/api/buyer/wallet');
+  return data?.wallet ?? data;
 }
 
 export async function getWalletTransactions(params?: {
@@ -10,13 +11,23 @@ export async function getWalletTransactions(params?: {
   limit?: number;
   type?: 'credit' | 'debit';
 }): Promise<{ transactions: WalletTransaction[]; total: number }> {
-  return buyerGet('/api/buyer/wallet/transactions', params as Record<string, unknown>);
+  const data = await buyerGet<any>('/api/buyer/wallet', params as Record<string, unknown>);
+  return {
+    transactions: data?.transactions ?? [],
+    total: data?.total ?? 0,
+  };
 }
 
-export async function topUpWallet(amount: number, method: string): Promise<{
+export async function topUpWallet(amount: number, _method?: string): Promise<{
   paymentUrl?: string;
   clientSecret?: string;
   message?: string;
 }> {
-  return buyerPost('/api/buyer/wallet/topup', { amount, method });
+  // Backend endpoint: POST /api/buyer/wallet/topup { amount }
+  const res = await buyerPost<any>('/api/buyer/wallet/topup', { amount });
+  return {
+    paymentUrl: res?.url ?? res?.paymentUrl,
+    clientSecret: res?.clientSecret,
+    message: res?.message,
+  };
 }
