@@ -62,8 +62,9 @@ export async function initPayment(data: PaymentInitRequest): Promise<PaymentInit
   const res = await buyerPost<any>(endpoint, payload);
   return {
     paymentUrl: res?.url ?? res?.checkoutUrl ?? res?.paymentUrl,
-    paymentId: res?.sessionId ?? res?.paymentId ?? res?.id,
+    sessionId: res?.sessionId ?? res?.paymentId ?? res?.id,
     clientSecret: res?.clientSecret,
+    status: res?.status ?? 'pending',
   };
 }
 

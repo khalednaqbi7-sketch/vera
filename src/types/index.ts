@@ -268,6 +268,7 @@ export interface PaymentInitRequest {
   orderId: string;
   method: PaymentMethod;
   returnUrl?: string;
+  cancelUrl?: string;
 }
 
 export interface PaymentInitResponse {

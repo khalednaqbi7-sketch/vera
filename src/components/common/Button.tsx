@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  StyleProp,
   View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -44,19 +45,19 @@ export const Button: React.FC<ButtonProps> = ({
     onPress();
   };
 
-  const containerStyle = [
+  const containerStyle: StyleProp<ViewStyle> = [
     styles.base,
-    styles[variant],
-    styles[`size_${size}` as keyof typeof styles],
+    styles[variant] as ViewStyle,
+    styles[`size_${size}` as keyof typeof styles] as ViewStyle,
     fullWidth && styles.fullWidth,
     (disabled || loading) && styles.disabled,
     style,
   ];
 
-  const labelStyle = [
+  const labelStyle: StyleProp<TextStyle> = [
     styles.text,
-    styles[`text_${variant}` as keyof typeof styles],
-    styles[`textSize_${size}` as keyof typeof styles],
+    styles[`text_${variant}` as keyof typeof styles] as TextStyle,
+    styles[`textSize_${size}` as keyof typeof styles] as TextStyle,
     textStyle,
   ];
 
