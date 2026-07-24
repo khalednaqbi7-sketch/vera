@@ -1,11 +1,10 @@
 import { publicGet } from './client';
+import { BASE_URL } from './client';
 import type { Category, Service } from '../types';
-
-const BASE = 'https://veraapp.app';
 
 function fullUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
-  return path.startsWith('http') ? path : `${BASE}${path}`;
+  return path.startsWith('http') ? path : `${BASE_URL}${path}`;
 }
 
 function mapCategory(raw: any): Category {

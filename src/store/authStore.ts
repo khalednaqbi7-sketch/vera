@@ -7,21 +7,19 @@ import {
   clearProviderToken,
   getBuyerToken,
   getProviderToken,
+  buyerClient,
+  providerClient,
 } from '../api/client';
 import type { BuyerUser, ProviderUser } from '../types';
 
 interface AuthState {
-  // Buyer
   buyerToken: string | null;
   buyerUser: BuyerUser | null;
-  // Provider
   providerToken: string | null;
   providerUser: ProviderUser | null;
-  // App mode
   mode: 'buyer' | 'provider' | null;
   isLoading: boolean;
 
-  // Actions
   loginAsBuyer: (token: string, user: BuyerUser) => Promise<void>;
   loginAsProvider: (token: string, user: ProviderUser) => Promise<void>;
   logoutBuyer: () => Promise<void>;
@@ -36,6 +34,36 @@ interface AuthState {
 const BUYER_USER_KEY = 'vera_buyer_user';
 const PROVIDER_USER_KEY = 'vera_provider_user';
 const MODE_KEY = 'vera_mode';
+
+// ─── Session Verification ─────────────────────────────────────────────────────
+// When the stored token is 'via-cookie', the session relies on the native
+// cookie jar which may not survive app restarts on Android.
+// We verify the session by pinging /me — if it fails with 401, we clear it.
+async function verifyBuyerSession(token: string): Promise<{ valid: boolean; user?: BuyerUser }> {
+  if (!token) return { valid: false };
+  // Real JWT — trust it; the 401 interceptor will handle expiry
+  if (token.startsWith('eyJ')) return { valid: true };
+  // Cookie-based session — must verify on each cold start
+  try {
+    const res = await buyerClient.get<any>('/api/buyer-auth/me');
+    const user = res.data?.buyer ?? res.data?.user ?? res.data ?? null;
+    return { valid: true, user };
+  } catch {
+    return { valid: false };
+  }
+}
+
+async function verifyProviderSession(token: string): Promise<{ valid: boolean; user?: ProviderUser }> {
+  if (!token) return { valid: false };
+  if (token.startsWith('eyJ')) return { valid: true };
+  try {
+    const res = await providerClient.get<any>('/api/provider-auth/me');
+    const user = res.data?.provider ?? res.data?.user ?? res.data ?? null;
+    return { valid: true, user };
+  } catch {
+    return { valid: false };
+  }
+}
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   buyerToken: null,
@@ -109,7 +137,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   hydrateFromStorage: async () => {
     try {
-      const [buyerToken, providerToken, buyerUserStr, providerUserStr, mode] = await Promise.all([
+      const [rawBuyerToken, rawProviderToken, buyerUserStr, providerUserStr, mode] = await Promise.all([
         getBuyerToken(),
         getProviderToken(),
         AsyncStorage.getItem(BUYER_USER_KEY),
@@ -117,8 +145,40 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         AsyncStorage.getItem(MODE_KEY),
       ]);
 
-      const buyerUser = buyerUserStr ? JSON.parse(buyerUserStr) : null;
-      const providerUser = providerUserStr ? JSON.parse(providerUserStr) : null;
+      let buyerToken = rawBuyerToken;
+      let buyerUser: BuyerUser | null = buyerUserStr ? JSON.parse(buyerUserStr) : null;
+      let providerToken = rawProviderToken;
+      let providerUser: ProviderUser | null = providerUserStr ? JSON.parse(providerUserStr) : null;
+
+      // ── FIX: Verify cookie-based sessions on cold start ──────────────────────
+      // Cookie jar does NOT persist across app restarts on Android.
+      // Ping the /me endpoint; if 401, treat user as logged out.
+      const [buyerCheck, providerCheck] = await Promise.all([
+        buyerToken ? verifyBuyerSession(buyerToken) : Promise.resolve({ valid: false }),
+        providerToken ? verifyProviderSession(providerToken) : Promise.resolve({ valid: false }),
+      ]);
+
+      if (buyerToken && !buyerCheck.valid) {
+        await clearBuyerToken();
+        await AsyncStorage.removeItem(BUYER_USER_KEY);
+        buyerToken = null;
+        buyerUser = null;
+      } else if (buyerCheck.user) {
+        // Update cached user data with fresh data from server
+        buyerUser = buyerCheck.user;
+        await AsyncStorage.setItem(BUYER_USER_KEY, JSON.stringify(buyerUser));
+      }
+
+      if (providerToken && !providerCheck.valid) {
+        await clearProviderToken();
+        await AsyncStorage.removeItem(PROVIDER_USER_KEY);
+        providerToken = null;
+        providerUser = null;
+      } else if (providerCheck.user) {
+        providerUser = providerCheck.user;
+        await AsyncStorage.setItem(PROVIDER_USER_KEY, JSON.stringify(providerUser));
+      }
+
       const resolvedMode = (mode as 'buyer' | 'provider' | null) ||
         (buyerToken ? 'buyer' : providerToken ? 'provider' : null);
 

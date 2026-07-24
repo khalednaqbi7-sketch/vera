@@ -1,11 +1,10 @@
 import { publicGet, buyerGet, buyerPost, buyerDelete } from './client';
+import { BASE_URL } from './client';
 import type { Service, Review } from '../types';
-
-const BASE = 'https://veraapp.app';
 
 function fullUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
-  return path.startsWith('http') ? path : `${BASE}${path}`;
+  return path.startsWith('http') ? path : `${BASE_URL}${path}`;
 }
 
 // ─── Map raw service from public API (list) ───────────────────────────────────
@@ -105,7 +104,6 @@ export async function getServices(params?: {
 
 export async function getServiceById(id: string): Promise<Service> {
   const data = await publicGet<any>(`/api/services/${id}`);
-  // Backend returns { service: {...}, reviews: [...], related: [...] }
   const raw = data?.service ?? data;
   return mapDetailService(raw);
 }

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCartStore } from '../../src/store/cartStore';
@@ -98,6 +98,11 @@ export default function BuyerLayout() {
           ),
         }}
       />
+      {/* Hidden screens — accessible via router.push, not shown in tab bar */}
+      <Tabs.Screen name="wishlist" options={{ href: null }} />
+      <Tabs.Screen name="wallet" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="support" options={{ href: null }} />
     </Tabs>
   );
 }
